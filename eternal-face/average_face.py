@@ -15,7 +15,7 @@ class AverageFace(Face):
 
     def __init__(self, images):
         Face.__init__(self, np.zeros(images[0].shape))
-        self._images = images
+        self._images = [Face(img) for img in images]
         self._all_features = np.zeros((68, len(images), 2))
 
     def features_in(self):
@@ -33,26 +33,28 @@ class AverageFace(Face):
         2 coordinates = x and y for each feature
         Returns array with coordinates of feature points in final image).
         """
-        self._features = np.average(self._all_features, axis=0)
+        self._features = np.average(self._all_features, axis=1)
 
     def generate_avg(self):
         """
         Generates image as average of inputs.
         """
+        if np.sum(self._all_features) == 0:
+            self.features_in()
+        if np.sum(self._features) == 0:
+            self.features_out()
         target_pts = self.get_delaunay_points()
         alpha = 1/len(self._images)
         for img in self._images:
             source_pts = img.get_delaunay_points()
-            for num, triangle in enumerate(source_pts):
-                transform = cv2.getAffineTransform(triangle, target_pts[num])
-                mask = np.zeros(img.shape)
-                cv2.fillConvexPoly(mask, triangle, 1)
-                masked_img = img * mask
-                warped = cv2.warpAffine(masked_img, transform, borderMode=cv2.BORDER_REFLECT_101)
+            for num, triangle in enumerate(source_pts[:len(target_pts)]):
+                warped = morph.triangle_warp(img.get_image(), triangle, target_pts[num])
             self._image += alpha * warped
 
     def get_avg(self):
         """
         Returns averaged face.
         """
+        if np.sum(self._image) == 0:
+            self.generate_avg()
         return self._image

@@ -18,7 +18,7 @@ class Face():
         self._delaunay = self._image.copy()
         self._delaunay_pts = []
         self._cols, self._rows = self._image.shape[1], self._image.shape[0]
-        self._features = np.zeros((68, 1, 2))
+        self._features = np.zeros((68, 2))
 
     def detect_features(self, model_name='predictor_68.dat'):
         """
@@ -34,7 +34,7 @@ class Face():
         points = predictor(self._image, det)
 
         for num, point in enumerate(points.parts()):
-            self._features[num, 0, :] = [int(point.x), int(point.y)]
+            self._features[num, :] = [int(point.x), int(point.y)]
 
     def calc_delaunay(self, color=(255, 0, 0)):
         """
@@ -44,7 +44,7 @@ class Face():
         subdiv = cv2.Subdiv2D(rect)
 
         for point in self._features:
-            subdiv.insert((point[0][0], point[0][1]))
+            subdiv.insert((point[0], point[1]))
 
         triangles = subdiv.getTriangleList()
 
@@ -65,6 +65,7 @@ class Face():
         Returns array of features.
         """
         if np.sum(self._features) == 0:
+            print("Detecting features.")
             self.detect_features()
         return self._features
 
@@ -72,6 +73,17 @@ class Face():
         """
         Returns list of Delaunay triangle vertex coordinates.
         """
+        if np.sum(self._features) == 0:
+            print("Detecting features.")
+            self.detect_features()
         if not self._delaunay_pts:
+            print("Calculating Delaunay triangle vertices.")
             self.calc_delaunay()
         return self._delaunay_pts
+
+    def get_image(self):
+        """
+        Return image.
+        """
+        return self._image
+
