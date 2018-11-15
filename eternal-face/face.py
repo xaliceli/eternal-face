@@ -55,7 +55,7 @@ class Face():
 
             if all(0 <= x <= self._cols for x in [pt1[0], pt2[0], pt3[0]]):
                 if all(0 <= y <= self._rows for y in [pt1[1], pt2[1], pt3[1]]):
-                    self._delaunay_pts.append((pt1, pt2, pt3))
+                    self._delaunay_pts.append([pt1, pt2, pt3])
                     cv2.line(self._delaunay, pt1, pt2, color, 1, cv2.LINE_AA, 0)
                     cv2.line(self._delaunay, pt2, pt3, color, 1, cv2.LINE_AA, 0)
                     cv2.line(self._delaunay, pt3, pt1, color, 1, cv2.LINE_AA, 0)
@@ -86,4 +86,3 @@ class Face():
         Return image.
         """
         return self._image
-

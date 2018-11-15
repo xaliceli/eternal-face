@@ -3,15 +3,14 @@ main.py
 Run scripts to generate output video.
 """
 
+from glob import glob
+from itertools import combinations
+from random import shuffle
 import sys
 import os
 import cv2
 import scipy
-from glob import glob
-from itertools import combinations
-from random import shuffle
 from average_face import AverageFace
-
 
 def read_faces(image_dir, downsample=2):
     """
@@ -29,21 +28,24 @@ def read_faces(image_dir, downsample=2):
     return images
 
 
-def average_faces(faces, k=None):
+def average_faces(faces, k=None, limit=None):
     """
     Computes k averages from n faces.
     """
     if not k:
         k = len(faces) - 1
     avg_sets = list(combinations(faces, k))
+    if not limit:
+        limit = len(avg_sets)
 
     averages = []
-    for num, combination in enumerate(avg_sets):
+    for num, combination in enumerate(avg_sets[:limit]):
         print('Generating average ' + str(num) + '...')
         avg = AverageFace(images=combination).get_avg()
         averages.append(avg)
 
     return averages
+
 
 if __name__ == '__main__':
 
@@ -57,4 +59,6 @@ if __name__ == '__main__':
 
     for num, face in enumerate(images_out):
         out_path = os.path.join(out_dir, 'avg{0:04d}.png'.format(num))
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
         cv2.imwrite(out_path, face)
