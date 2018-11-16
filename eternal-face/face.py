@@ -4,11 +4,12 @@ Define face class.
 """
 
 import os
-import dlib
+
 import cv2
+import dlib
 import numpy as np
 
-class Face():
+class Face(object):
     """
     Represents an image of a face.
     """

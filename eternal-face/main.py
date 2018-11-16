@@ -5,16 +5,27 @@ Run scripts to generate output video.
 
 from glob import glob
 from itertools import combinations
+import os
 from random import shuffle
 import sys
-import os
+
 import cv2
-import scipy
+
 from average_face import AverageFace
 
 def read_faces(image_dir, downsample=2):
     """
-    Read in all images from directory. and return randomized list.
+    Reads in all images from directory and returns randomized list.
+
+    Args:
+        image_dir (str): Full path of directory where images are stored.
+        downsample (int): Downsample factor to resize images by.
+
+    Returns:
+        images (list): List of downsampled images as numpy arrays.
+
+    Raises: @TODO
+        TBD: Error if directory does not exist.
     """
     extensions = ['bmp', 'pbm', 'pgm', 'ppm', 'sr', 'ras', 'jpeg',
                   'jpg', 'jpe', 'jp2', 'tiff', 'tif', 'png']
@@ -31,6 +42,16 @@ def read_faces(image_dir, downsample=2):
 def average_faces(faces, k=None, limit=None):
     """
     Computes k averages from n faces.
+
+    Args:
+        faces (list): A list of images representing faces.
+        k (int): Number of images to include in each average.
+            Default is one less than the number of faces.
+        limit (int): Number of averages to produce.
+            Default is len(faces) choose k.
+
+    Returns:
+        averages (list): List of averaged faces as numpy arrays.
     """
     if not k:
         k = len(faces) - 1

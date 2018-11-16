@@ -3,16 +3,14 @@ morph.py
 Morphs series of images together.
 """
 
-import numpy as np
 import cv2 
+import numpy as np
 
 def triangle_warp(img1, tri1, tri2):
     """
     Returns vertices of triangle in bounding rectangle.
     """
     # Find rectangles bounding triangle in source and destination.
-    # tri1.sort(key=lambda tup: tup[1])
-    # tri2.sort(key=lambda tup: tup[1])
     rect1, rect2 = cv2.boundingRect(np.float32(tri1)), cv2.boundingRect(np.float32(tri2))
     tri1_crop, tri2_crop = [], []
 
@@ -33,7 +31,6 @@ def triangle_warp(img1, tri1, tri2):
     mask = np.zeros((rect2[3], rect2[2], 3), dtype='float32')
     cv2.fillConvexPoly(mask, np.int32(tri2_crop),
                        (1, 1, 1), cv2.LINE_AA, 0)
-    cv2.polylines(mask, [np.int32(tri2_crop)], True, (.5, .5, .5), 1, cv2.LINE_AA, 0)
 
     # Apply mask to boundary rectangle in destination image.
     img2_crop = img2_crop * mask

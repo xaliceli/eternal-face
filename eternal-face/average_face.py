@@ -4,10 +4,12 @@ Computes n choose k averages of input images.
 """
 
 import os
+
 import cv2
 import numpy as np
-import morph
+
 from face import Face
+from morph import triangle_warp
 
 class AverageFace(Face):
     """
@@ -34,7 +36,7 @@ class AverageFace(Face):
         2 coordinates = x and y for each feature
         Returns array with coordinates of feature points in final image).
         """
-        self._features = np.average(self._all_features, axis=1)
+        self._features = np.int32(np.average(self._all_features, axis=1))
 
     def get_delaunay_mapping(self, image):
         """
@@ -69,12 +71,18 @@ class AverageFace(Face):
         if np.sum(self._features) == 0:
             self.features_out()
         alpha = 1.0/len(self._images)
-        for img in self._images:
+        for img_num, img in enumerate(self._images):
             source_pts = img.get_delaunay_points()
             target_pts = self.get_delaunay_mapping(img)
-            for num, triangle in enumerate(source_pts[:len(target_pts)]):
-                warped = morph.triangle_warp(img.get_image(), triangle, target_pts[num])
-                self._image += alpha * warped
+            image_warped = np.zeros(img.get_image().shape)
+            for num, triangle in enumerate(source_pts):
+                tri_warped = triangle_warp(img.get_image(), triangle, target_pts[num])
+                image_warped = np.where(tri_warped > 0, tri_warped, image_warped)
+            if img_num > 0:
+                empty = ~image_warped.any(axis=2)
+                empty_mat = np.dstack((empty, empty, empty))
+                image_warped = np.where(empty_mat, self._image / (img_num * alpha), image_warped)
+            self._image += alpha * image_warped
 
     def get_avg(self):
         """
