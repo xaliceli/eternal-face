@@ -9,7 +9,7 @@ import cv2
 import dlib
 import numpy as np
 
-class Face(object):
+class Face():
     """
     Represents an image of a face.
     """
@@ -18,10 +18,10 @@ class Face(object):
         self._image = image
         self._delaunay = self._image.copy()
         self._delaunay_pts = []
-        self._cols, self._rows = self._image.shape[1], self._image.shape[0]
+        self._dims = self._image.shape
         self._features = np.zeros((68, 2))
 
-    def detect_features(self, model_name='predictor_68.dat'):
+    def detect_features(self, auto_border=True, model_name='predictor_68.dat'):
         """
         Detect facial features from image.
         Modified from dlib: http://dlib.net/face_landmark_detection.py.html
@@ -37,11 +37,20 @@ class Face(object):
         for num, point in enumerate(points.parts()):
             self._features[num, :] = [int(point.x), int(point.y)]
 
+        if auto_border:
+            border_pts = np.array([[0, 0],
+                                   [0, self._dims[1]/2],
+                                   [0, self._dims[1] - 1],
+                                   [self._dims[0] - 1, 0],
+                                   [self._dims[0] - 1, self._dims[1]/2],
+                                   [self._dims[0] - 1, self._dims[1] - 1]])
+            self._features = np.insert(self._features, border_pts.shape[0], border_pts, axis=0)
+
     def calc_delaunay(self, color=(255, 0, 0)):
         """
         Draw delaunay triangle diagram.
         """
-        rect = (0, 0, self._cols, self._rows)
+        rect = (0, 0, self._dims[1], self._dims[0])
         subdiv = cv2.Subdiv2D(rect)
 
         for point in self._features:
@@ -54,8 +63,8 @@ class Face(object):
             pt2 = (tri[2], tri[3])
             pt3 = (tri[4], tri[5])
 
-            if all(0 <= x <= self._cols for x in [pt1[0], pt2[0], pt3[0]]):
-                if all(0 <= y <= self._rows for y in [pt1[1], pt2[1], pt3[1]]):
+            if all(0 <= x <= self._dims[1] for x in [pt1[0], pt2[0], pt3[0]]):
+                if all(0 <= y <= self._dims[0] for y in [pt1[1], pt2[1], pt3[1]]):
                     self._delaunay_pts.append([pt1, pt2, pt3])
                     cv2.line(self._delaunay, pt1, pt2, color, 1, cv2.LINE_AA, 0)
                     cv2.line(self._delaunay, pt2, pt3, color, 1, cv2.LINE_AA, 0)
