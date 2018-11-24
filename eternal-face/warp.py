@@ -1,6 +1,6 @@
 """
-morph.py
-Morphs series of images together.
+warp.py
+Image warping functions.
 """
 
 import cv2 
@@ -49,4 +49,5 @@ def triangle_warp(img1, tri1, tri2, mask=True):
     img2 = np.zeros(img1.shape)
     img2[rect2[1]:(rect2[1]+rect2[3]), rect2[0]:(rect2[0]+rect2[2])] = img2_crop
 
+    # Returns full image with warped triangle and bounded rectangle region.
     return img2, img2[rect2[1]:(rect2[1]+rect2[3]), rect2[0]:(rect2[0]+rect2[2])]

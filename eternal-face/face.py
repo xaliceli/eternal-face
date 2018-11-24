@@ -1,6 +1,6 @@
 """
 face.py
-Define face class.
+Defines face class.
 """
 
 import os
@@ -12,6 +12,13 @@ import numpy as np
 class Face():
     """
     Represents an image of a face.
+
+    Attributes:
+        image: Image of the face.
+        delaunay: Face image with Delaunay triangles drawn.
+        delaunay_pts: List of Delaunay triangle vertices.
+        dims: Tuple of image dimensions.
+        features: Array of coordinates of facial features.
     """
 
     def __init__(self, image):
@@ -23,8 +30,12 @@ class Face():
 
     def detect_features(self, auto_border=True, model_name='predictor_68.dat'):
         """
-        Detect facial features from image.
+        Detects facial features from image.
         Modified from dlib: http://dlib.net/face_landmark_detection.py.html
+
+        Args:
+            auto_border (bool): If True, adds six additional points along border of image.
+            model_name (str): Name of predictor model file.
         """
         detector = dlib.get_frontal_face_detector()
         predictor_path = os.path.join(os.path.split(os.getcwd())[0], 'data', model_name)
@@ -37,6 +48,7 @@ class Face():
         for num, point in enumerate(points.parts()):
             self._features[num, :] = [int(point.x), int(point.y)]
 
+        # Adds points at edges of image.
         if auto_border:
             border_pts = np.array([[0, 0],
                                    [0, self._dims[1]/2],
@@ -48,7 +60,10 @@ class Face():
 
     def calc_delaunay(self, color=(255, 0, 0)):
         """
-        Draw delaunay triangle diagram.
+        Calculates Delaunay points and draws delaunay triangle diagram.
+
+        Args:
+            color (tuple): RGB value of lines for triangles to be drawn.
         """
         rect = (0, 0, self._dims[1], self._dims[0])
         subdiv = cv2.Subdiv2D(rect)

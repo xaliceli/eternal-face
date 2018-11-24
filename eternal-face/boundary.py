@@ -8,7 +8,16 @@ import numpy as np
 
 def overlap_error(image_1, image_2, col_overlap):
     """
-    Return absolute value of difference between two images where they overlap.
+    Calculates Euclidean distance between two images where they overlap.
+
+    Args:
+        image_1 (np.array): Left image.
+        image_2 (np.array): Right image.
+        col_overlap (int): Pixel width of overlap region.
+
+    Returns:
+        error (np.array): Array with width = col_overlap and height of both images
+            containing error in overlap region.
     """
     overlap_img1 = np.float32(image_1[:, -col_overlap:])
     overlap_img2 = np.float32(image_2[:, :col_overlap])
@@ -17,8 +26,15 @@ def overlap_error(image_1, image_2, col_overlap):
 
 def minimum_errors(error):
     """
-    Returns array containing cumulative error of minimum cost boundary
+    Calculates array containing cumulative error of minimum cost boundary
     up to each coordinate.
+
+    Args:
+        error (np.array): Array of errors.
+
+    Returns:
+        cumulative_error (np.array): Cumulative error of minimum cost vertical
+        path up to each pixel coordinate.
     """
     overlap_rows, overlap_cols = error.shape[:2]
     cumulative_error = np.empty((overlap_rows, overlap_cols, 2), dtype='object')
@@ -42,7 +58,14 @@ def minimum_errors(error):
 
 def minimum_error_boundary(error):
     """
-    Returns coordinates of minimum error boundary across overlap region.
+    Finds minimum error boundary across overlap region.
+
+    Args:
+        error (np.array): Array of errors.
+
+    Returns:
+        coords (list): List of coordinates of minimum error boundary
+            in reverse (bottom to top) order.
     """
     rows = error.shape[0]
     error_map = minimum_errors(error)
@@ -57,25 +80,27 @@ def minimum_error_boundary(error):
 
     return coords
 
-def overlap_mask(mask_rows, mask_cols, boundary):
-    """
-    Returns mask for overlapping blend region along boundary.
-    """
-    mask = np.zeros((mask_rows, mask_cols))
-    for row in range(1, len(boundary) + 1):
-        boundary_col = boundary[-row][1]
-        mask[row - 1, boundary_col:] = 1
-    return mask
-
 def stitch_images(image_1, image_2, boundary, overlap, direction):
     """
-    Returns two images stitched into one according to mask.
+    Stitches two images together along minimum error boundary.
+
+    Args:
+        image_1 (np.array): Left or top image to be stitched.
+        image_2 (np.array): Right or bottom image to be stitched.
+        boundary (list): Coordinates of minimum error boundary in reverse order.
+        overlap (int): Width/height of overlap region.
+        direction (str): Direction of stitching to be performed. If horizontal,
+            images will be rotated 90 degrees for a vertical stitch, then
+            rotated back into original orientation.
+
+    Returns:
+        stitched_img (np.array): Both images stitched together with width/height
+            of both images combined minus overlap width/height.
     """
     if direction == 'horizontal':
         image_1, image_2 = np.rot90(image_1), np.rot90(image_2)
     stitched_img = np.zeros((image_1.shape))
     stitched_img[:, :overlap] = image_1[:, -overlap:]
-    # for layer in range(image_1.shape[2]):
     for row in range(1, len(boundary) + 1):
         boundary_col = boundary[-row][1]
         stitched_img[row - 1, boundary_col:, :] = image_2[row - 1, boundary_col:, :]
