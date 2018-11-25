@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 from morph_face import MorphFace
+from texture import Texture
 
 
 def read_images(image_dir, randomize=True, downsample=2):
@@ -35,7 +36,7 @@ def read_images(image_dir, randomize=True, downsample=2):
 
     search_paths = [os.path.join(image_dir, '*.' + ext) for ext in extensions]
     image_files = sorted(sum(map(glob, search_paths), []))
-    images = [cv2.imread(f, cv2.IMREAD_UNCHANGED | cv2.IMREAD_COLOR) for f in image_files]
+    images = [cv2.imread(f) for f in image_files]
     images = [img[::downsample, ::downsample] for img in images]
     if randomize:
         random.shuffle(images)
@@ -118,6 +119,21 @@ def create_textures(faces, out_dir):
     #     out_path = os.path.join(out_dir, 'texture{0:04d}.png'.format(text_num))
     #     cv2.imwrite(out_path, texture)
 
+def transfer_texture(texture, intensities, out_dir):
+    """
+    Computes textures from intentionally distorted warp triangles.
+
+    Args:
+        faces (list): A list of images representing faces.
+        out_dir (str): Directory to save textures to.
+    """
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    transfer = Texture(texture, intensities.shape, 7, intensities).generate_texture()
+    out_path = os.path.join(out_dir, 'transfer.png')
+    cv2.imwrite(out_path, transfer)
+
 
 def main(action, set_dir):
     """
@@ -139,7 +155,12 @@ def main(action, set_dir):
             images = average_faces(images_in, out_dir)
         morph_averages(images, out_dir)
     elif action == 'texture':
-        create_textures(images_in, os.path.join(out_dir, 'textures'))
+        create_textures(images_in, out_dir)
+    elif action == 'transfer':
+        images = read_images(out_dir, downsample=1)
+        textures = read_images(os.path.join(out_dir, 'textures'), downsample=10)
+        transfer_texture(random.choice(textures), random.choice(images),
+                         os.path.join(out_dir, 'transfers'))
 
 
 if __name__ == '__main__':
