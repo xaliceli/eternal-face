@@ -21,12 +21,16 @@ class Face():
         features: Array of coordinates of facial features.
     """
 
-    def __init__(self, image):
+    def __init__(self, image, feature_points=None):
         self.image = image
         self.delaunay = self.image.copy()
         self.delaunay_pts = []
         self.dims = self.image.shape
-        self.features = np.zeros((68, 2))
+        if feature_points is not None:
+            print('Features initialized from specified points.')
+            self.features = feature_points
+        else:
+            self.features = np.zeros((68, 2))
 
     def detect_features(self, auto_border=True, model_name='predictor_68.dat'):
         """
@@ -51,11 +55,11 @@ class Face():
         # Adds points at edges of image.
         if auto_border:
             border_pts = np.array([[0, 0],
-                                   [0, self.dims[1]/2],
-                                   [0, self.dims[1] - 1],
-                                   [self.dims[0] - 1, 0],
-                                   [self.dims[0] - 1, self.dims[1]/2],
-                                   [self.dims[0] - 1, self.dims[1] - 1]])
+                                   [0, self.dims[0]/2],
+                                   [0, self.dims[0] - 1],
+                                   [self.dims[1] - 1, 0],
+                                   [self.dims[1] - 1, self.dims[0]/2],
+                                   [self.dims[1] - 1, self.dims[0] - 1]])
             self.features = np.insert(self.features, border_pts.shape[0], border_pts, axis=0)
 
     def calc_delaunay(self, color=(255, 0, 0)):

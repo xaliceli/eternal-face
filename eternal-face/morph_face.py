@@ -9,7 +9,6 @@ import cv2
 import numpy as np
 
 from face import Face
-from texture import Texture
 from warp import triangle_warp
 
 class MorphFace(Face):
@@ -21,11 +20,12 @@ class MorphFace(Face):
         textures: List of textures generated from warp triangles.
         frames: List of frames generated in morph sequence.
         all_features: Array of feature points from all images.
+        write: Optional directory to write outputs to.
     """
 
-    def __init__(self, images, write=None):
+    def __init__(self, images, feature_points=None, write=None):
         Face.__init__(self, np.zeros(images[0].shape))
-        self.images = [Face(img) for img in images]
+        self.images = [Face(img, feature_points) for img in images]
         self.textures = []
         self.frames = []
         self.all_features = np.zeros((74, len(images), 2))
@@ -54,7 +54,7 @@ class MorphFace(Face):
             weights (list): If None, weights all images equally.
                 Otherwise, applies weight values to each image accordingly.
         """
-        self.features = np.int32(np.average(self.all_features, axis=1, weights=weights))
+        self.features = np.int32(np.round(np.average(self.all_features, axis=1, weights=weights)))
 
     def get_delaunay_mapping(self, image):
         """
@@ -80,13 +80,10 @@ class MorphFace(Face):
         for triangle in triangles:
             target_triangle = []
             for point in triangle:
-                x_match = np.argwhere(source_features == point[0])
-                for coords in x_match:
-                    if coords[1] == 0:
-                        coords[1] += 1
-                        if source_features[tuple(coords)] == point[1]:
-                            target_triangle.append((self.features[coords[0], 0],
-                                                    self.features[coords[0], 1]))
+                match = np.where((source_features[:, 0] == point[0]) & \
+                                 (source_features[:, 1] == point[1]))[0][0]
+                target_triangle.append((self.features[match, 0],
+                                        self.features[match, 1]))
             delaunay_mapping.append(target_triangle)
         return delaunay_mapping
 
@@ -115,6 +112,9 @@ class MorphFace(Face):
     def generate_morph(self, frames=10):
         """
         Generates morph frames between inputs.
+
+        Args:
+            frames (int): Number of frames between images.
         """
         if np.sum(self.all_features) == 0:
             self.features_in()
@@ -135,34 +135,29 @@ class MorphFace(Face):
                     frame_img += alpha * frame * image_warped
             self.frames.append(frame_img)
 
-    def generate_textures(self, min_window=20):
+    def generate_regions(self, min_window=50):
         """
-        Generates textures of individual regions.
+        Generates individual warp regions for texture synthesis.
+
+        Args:
+            min_window (int): Minimum width of region to save.
         """
         if np.sum(self.all_features) == 0:
             self.features_in()
         if np.sum(self.features) == 0:
             self.features_out()
-        for img in self.images:
+        for img_num, img in enumerate(self.images):
             source_pts = img.get_delaunay_points()
             target_pts = self.get_delaunay_points()
             for num, triangle in enumerate(source_pts):
-                tri_warped, bounded = triangle_warp(img.get_image(),
-                                                    triangle, target_pts[num], mask=False)
-                window = min(bounded.shape[:2])/2
+                _, bounded = triangle_warp(img.get_image(), triangle, target_pts[num], mask=False)
+                window = min(bounded.shape[:2])
                 if window > min_window:
-                    print('Generating texture from triangle ' + str(num))
-                    if window % 2 == 0:
-                        window -= 1
-                    filled = Texture(bounded, tri_warped.shape, window, None).generate_texture()
-                    self.textures.append(filled)
                     if self.write:
-                        bounded_path = os.path.join(self.write, 'warps',
-                                                    'texture{0:04d}.png'.format(num))
+                        bounded_path = os.path.join(self.write,
+                                                    'warp' + str(img_num) + str(num) + '.png')
                         cv2.imwrite(bounded_path, bounded)
-                        texture_path = os.path.join(self.write, 'textures',
-                                                    'texture{0:04d}.png'.format(num))
-                        cv2.imwrite(texture_path, filled)
+                    self.textures.append(bounded)
 
     def get_avg(self):
         """
@@ -180,10 +175,10 @@ class MorphFace(Face):
             self.generate_morph(num_frames)
         return self.frames
 
-    def get_texture(self):
+    def get_texture_regions(self):
         """
         Returns distorted facial textures.
         """
         if not self.textures:
-            self.generate_textures()
+            self.generate_regions()
         return self.textures
