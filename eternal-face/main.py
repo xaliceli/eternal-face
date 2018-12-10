@@ -155,7 +155,7 @@ def seed_textures(faces, out_dir):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
-    seeds = MorphFace(images=faces, write=out_dir).get_texture_regions()
+    seeds = MorphFace(images=faces, write=out_dir).get_texture_regions(detect=False)
     return seeds
 
 
@@ -173,14 +173,20 @@ def generate_textures(seeds, dims, out_dir, window=None, rotate=3):
 
     textures = []
     for num, seed in enumerate(seeds):
-        if not window:
-            window = min(seed.shape[:2])/2
-        if window % 2 == 0:
-            window -= 1
-        texture = Texture(dims, window).get_texture(seed, None, rotate)
-        out_path = os.path.join(out_dir, 'texture{0:04d}.png'.format(num))
-        cv2.imwrite(out_path, texture)
-        textures.append(texture)
+        try:
+            if not window:
+                if min(seed.shape[:2]) > 50:
+                    w_size = int(min(seed.shape[:2]) * .5)
+                else:
+                    w_size = int(min(seed.shape[:2]) * .75)
+            if w_size % 2 == 0:
+                w_size -= 1
+            texture = Texture(dims, w_size).get_texture(seed, None, rotate)
+            out_path = os.path.join(out_dir, 'texture{0:04d}.png'.format(num))
+            cv2.imwrite(out_path, texture)
+            textures.append(texture)
+        except KeyboardInterrupt:
+            continue
     return textures
 
 
@@ -200,7 +206,7 @@ def transfer_texture(textures, intensities, out_dir, window=None, rotate=3, iter
         if (min(texture.shape[:2]) * (.67) ** (iterations + 1))/6 > 1:
             for iter_num in range(iterations+1):
                 if window is None and iter_num == 0:
-                    w_size = min(texture.shape[:2])*2/3
+                    w_size = min(texture.shape[:2]) * (2.0/3)
                 elif iter_num == 0:
                     w_size = window
                 elif iter_num > 0:
@@ -229,7 +235,7 @@ def main(action, set_dir, source='inputs'):
     """
     image_dir = os.path.join(os.path.split(os.getcwd())[0], 'images', 'input', set_dir)
     out_dir = os.path.join(os.path.split(os.getcwd())[0], 'images', 'output', set_dir)
-    images_in = read_images(image_dir, downsample=2)
+    images_in = read_images(image_dir, downsample=1)
 
     if action == 'avg':
         average_faces(images_in, os.path.join(out_dir, 'averages'))
@@ -265,6 +271,8 @@ def main(action, set_dir, source='inputs'):
         seed_textures(images, os.path.join(out_dir, 'warps'))
     elif action == 'generate_textures':
         seeds = read_images(os.path.join(out_dir, 'warps'))
+        if source == 'random':
+            seeds = random.sample(seeds, len(seeds)/10)
         generate_textures(seeds, images_in[0].shape, os.path.join(out_dir, 'textures'))
     elif action == 'transfer_from_warp':
         if source == 'averages':

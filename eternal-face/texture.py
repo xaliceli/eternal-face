@@ -25,8 +25,8 @@ class Texture():
 
     def __init__(self, dims, window):
         self.dims = dims
-        self.w = window
-        self.k = (window - 1)/2
+        self.w = int(window)
+        self.k = (self.w - 1)/2
         self.adj_wind = self.w - self.w/6
         self.candidates = None
         self.candidates_gray = None
@@ -100,7 +100,7 @@ class Texture():
 
         return errors
 
-    def good_match(self, correspondence_patch, errors, alpha, min_err=0.075):
+    def good_match(self, correspondence_patch, errors, alpha, min_err=0.1):
         """
         Returns random patch candidate within min_err range of the minimum total distance.
 

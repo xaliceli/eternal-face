@@ -30,7 +30,7 @@ class Face():
             print('Features initialized from specified points.')
             self.features = feature_points
         else:
-            self.features = np.zeros((68, 2))
+            self.features = None
 
     def detect_features(self, auto_border=True, model_name='predictor_68.dat'):
         """
@@ -49,6 +49,7 @@ class Face():
         det = detector(self.image, 1)[0]
         points = predictor(self.image, det)
 
+        self.features = np.zeros((68, 2))
         for num, point in enumerate(points.parts()):
             self.features[num, :] = [int(point.x), int(point.y)]
 
@@ -93,16 +94,22 @@ class Face():
         """
         Returns array of features.
         """
-        if np.sum(self.features) == 0:
+        if np.sum(self.features) is None:
             print("Detecting features.")
             self.detect_features()
         return self.features
+
+    def set_features(self, features):
+        """
+        Sets array of features.
+        """
+        self.features = features
 
     def get_delaunay_points(self):
         """
         Returns list of Delaunay triangle vertex coordinates.
         """
-        if np.sum(self.features) == 0:
+        if np.sum(self.features) is None:
             print("Detecting features.")
             self.detect_features()
         if not self.delaunay_pts:

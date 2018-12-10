@@ -34,12 +34,27 @@ class MorphFace(Face):
             if not os.path.exists(self.write):
                 os.makedirs(self.write)
 
-    def features_in(self):
+    def features_in(self, detect=True):
         """
         Calculates features and Delaunay triangles for each input image.
         """
         for num, face in enumerate(self.images):
-            self.all_features[:, num, :] = face.get_features()
+            if detect:
+                self.all_features[:, num, :] = face.get_features()
+            else:
+                divided = np.zeros((self.all_features.shape[0], 2))
+                w_step = face.dims[1] / 7
+                h_step = face.dims[0] / 10
+                for row in range(1, 11):
+                    for col in range(1, 8):
+                        idx = (row - 1) * 7 + (col - 1)
+                        divided[idx, :] = (col * w_step, row * h_step)
+                divided[70] = [0, 0]
+                divided[71] = [0, face.dims[0] - 1]
+                divided[72] = [face.dims[1] - 1, 0]
+                divided[73] = [face.dims[1] - 1, face.dims[0] - 1]
+                face.set_features(divided)
+                self.all_features[:, num, :] = divided
 
     def features_out(self, weights=None):
         """
@@ -93,7 +108,7 @@ class MorphFace(Face):
         """
         if np.sum(self.all_features) == 0:
             self.features_in()
-        if np.sum(self.features) == 0:
+        if np.sum(self.features) is None:
             self.features_out()
         alpha = 1.0/len(self.images)
         for img_num, img in enumerate(self.images):
@@ -135,16 +150,18 @@ class MorphFace(Face):
                     frame_img += alpha * frame * image_warped
             self.frames.append(frame_img)
 
-    def generate_regions(self, min_window=50):
+    def generate_regions(self, detect, min_window=25):
         """
         Generates individual warp regions for texture synthesis.
 
         Args:
             min_window (int): Minimum width of region to save.
+            detect (bool): Detect features. If false, splits image
+                into equal regions.
         """
         if np.sum(self.all_features) == 0:
-            self.features_in()
-        if np.sum(self.features) == 0:
+            self.features_in(detect)
+        if np.sum(self.features) is None:
             self.features_out()
         for img_num, img in enumerate(self.images):
             source_pts = img.get_delaunay_points()
@@ -175,10 +192,10 @@ class MorphFace(Face):
             self.generate_morph(num_frames)
         return self.frames
 
-    def get_texture_regions(self):
+    def get_texture_regions(self, detect=True):
         """
         Returns distorted facial textures.
         """
         if not self.textures:
-            self.generate_regions()
+            self.generate_regions(detect)
         return self.textures
