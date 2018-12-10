@@ -13,3 +13,9 @@ images/output/set_1/averages/Icon
 images/output/set_1/averages/Icon
 images/output/set_1/averages/Icon
 *.avi
+.DS_Store
+.DS_Store
+data/predictor_68.dat
+eternal-face/eternal-face.yaml
+images/.DS_Store
+images/input/.DS_Store
