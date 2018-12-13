@@ -270,10 +270,10 @@ def main(action, set_dir, source='inputs'):
             images = images_in
         seed_textures(images, os.path.join(out_dir, 'warps'))
     elif action == 'generate_textures':
-        seeds = read_images(os.path.join(out_dir, 'warps'))
+        seeds = read_images(os.path.join(out_dir, 'warps'), randomize=False)
         if source == 'random':
             seeds = random.sample(seeds, len(seeds)/10)
-        generate_textures(seeds, images_in[0].shape, os.path.join(out_dir, 'textures'))
+        generate_textures(seeds, (1080, 1920, 3), os.path.join(out_dir, 'textures'))
     elif action == 'transfer_from_warp':
         if source == 'averages':
             images = read_images(os.path.join(out_dir, 'averages'))

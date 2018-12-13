@@ -100,7 +100,7 @@ class Texture():
 
         return errors
 
-    def good_match(self, correspondence_patch, errors, alpha, min_err=0.1):
+    def good_match(self, correspondence_patch, errors, alpha, min_err=0.05):
         """
         Returns random patch candidate within min_err range of the minimum total distance.
 

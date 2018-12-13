@@ -49,6 +49,10 @@ class MorphFace(Face):
                     for col in range(1, 8):
                         idx = (row - 1) * 7 + (col - 1)
                         divided[idx, :] = (col * w_step, row * h_step)
+                        if col * w_step == face.dims[1]:
+                            divided[idx, :][0] -= 1
+                        if row * h_step == face.dims[0]:
+                            divided[idx, :][1] -= 1
                 divided[70] = [0, 0]
                 divided[71] = [0, face.dims[0] - 1]
                 divided[72] = [face.dims[1] - 1, 0]
