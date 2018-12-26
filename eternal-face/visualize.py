@@ -14,11 +14,13 @@ import cv2
 import numpy as np
 import pygame
 
+# import boundary as meb
 
 def np_to_surface(array):
     new_array = array.copy()
     new_array[:, :, 0] = array[:, :, 2]
     new_array[:, :, 2] = array[:, :, 0]
+    # new_array = np.dstack((new_array, np.zeros((array.shape[0], array.shape[1]))))
     surface = pygame.surfarray.make_surface(np.flip(np.rot90(np.uint8(new_array)), 0))
     return surface
 
@@ -31,10 +33,10 @@ def set_squares(base, offsets, images, prev=None, pct_blank=0):
               (-(dim + offsets[1]/4), -offsets[1]/4, -(dim + offsets[0]/4), -offsets[0]/4)]
     if random.random() < pct_blank:
         idx = random.randint(0, len(images) - 1)
-        if np.sum(prev) is None:
+        if prev is None:
             images[idx] = np.zeros(images[0].shape)
         else:
-            images[idx] = prev[bounds[idx][0]:bounds[idx][1], bounds[idx][2]:bounds[idx][3]]
+            images[idx] = prev[idx]
 
     for loc, square in enumerate(images):
         base[bounds[loc][0]:bounds[loc][1], bounds[loc][2]:bounds[loc][3]] = square
@@ -44,6 +46,16 @@ def set_squares(base, offsets, images, prev=None, pct_blank=0):
 def add_texture(base, v_block, h_block, w_size, texture):
     patch = texture[v_block*w_size:v_block*w_size + w_size,
                     h_block*w_size:h_block*w_size + w_size]
+    # current = base[v_block*w_size:v_block*w_size + w_size,
+    #                h_block*w_size:h_block*w_size + w_size]
+
+    # abs_patch = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
+    # seam_coords = meb.minimum_error_boundary(abs_patch)
+    # if np.sum(current) == 0:
+    #     stitched = meb.stitch_images(patch, current, seam_coords, w_size, 'vertical')
+    # else:
+    #     stitched = meb.stitch_images(current, patch, seam_coords, w_size, 'vertical')
+
     base[v_block*w_size:v_block*w_size + w_size,
          h_block*w_size:h_block*w_size + w_size] = patch
 
@@ -90,13 +102,13 @@ def animation(warps, texture, target_dim, obj_dim, w_size):
         offset_x = 0
 
     pygame.init()
-    screen = pygame.display.set_mode((target_dim[1], target_dim[0]))
+    screen = pygame.display.set_mode((target_dim[1], target_dim[0]), pygame.FULLSCREEN)
     pygame.mouse.set_visible(0)
 
-    phase = 1
+    phase = 0
 
     new = set_squares(output, (offset_x, offset_y), random.sample(warps, 5))
-    show = np_to_surface(new)
+    show = np_to_surface(np.zeros(target_dim))
 
     timer = pygame.USEREVENT + 1
     timer_value = 1000
@@ -126,32 +138,38 @@ def animation(warps, texture, target_dim, obj_dim, w_size):
                 if rand_factor <= .9:
                     rand_factor += .1
 
+        screen.blit(show, (0, 0))
+
+        if phase == 0:
+            pygame.display.update()
+
         if phase == 1:
-            screen.blit(show, (0, 0))
             if pygame.event.get(timer):
-                new = set_squares(output, (offset_x, offset_y), random.sample(warps, 5),
-                                  None, rand_factor)
+                squares = random.sample(warps, 5)
+                new = set_squares(output, (offset_x, offset_y),
+                                  squares, None, rand_factor)
                 show = np_to_surface(new)
                 pygame.display.update()
 
         if phase == 2:
-            screen.blit(show, (0, 0))
             if pygame.event.get(timer):
                 idx += 1
-                h_range = output.shape[1] / w_size + 1
+                v_range, h_range = output.shape[0] / w_size + 1, output.shape[1] / w_size + 1
                 v_block, h_block = idx / h_range, idx % h_range
-                texture_frame = add_texture(output, v_block, h_block, w_size, texture)
-                new = set_squares(texture_frame, (offset_x, offset_y), random.sample(warps, 5),
-                                  new.copy(), rand_factor)
+                if v_block < v_range:
+                    texture_frame = add_texture(output, v_block, h_block, w_size, texture)
+                last_squares = squares[:]
+                squares = random.sample(warps, 5)
+                new = set_squares(texture_frame, (offset_x, offset_y),
+                                  squares, last_squares, rand_factor)
                 show = np_to_surface(new)
                 pygame.display.update()
 
         if phase == 3:
             rand_factor = 0
-            screen.blit(show, (0, 0))
             if pygame.event.get(timer):
-                new = set_squares(np.zeros(target_dim), (offset_x, offset_y), random.sample(warps, 5),
-                                  None, rand_factor)
+                new = set_squares(np.zeros(target_dim), (offset_x, offset_y),
+                                  random.sample(warps, 5), None, rand_factor)
                 show = np_to_surface(new)
                 pygame.display.update()
 
@@ -173,9 +191,9 @@ def visualize(set_name):
     adj_warps = resize_warps(warps, dim)
 
     if min(warps[0].shape[:2]) > 50:
-        w_size = int(min(warps[0].shape[:2]) * .5)
+        w_size = int(min(warps[0].shape[:2]) * .5) * 2
     else:
-        w_size = int(min(warps[0].shape[:2]) * .75)
+        w_size = int(min(warps[0].shape[:2]) * .75) * 2
 
     animation(adj_warps, texture_img, texture_img.shape, dim, w_size)
 

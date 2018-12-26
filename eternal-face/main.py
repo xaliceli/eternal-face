@@ -4,7 +4,6 @@ Run scripts to generate output video.
 """
 
 from glob import glob
-from itertools import combinations
 import os
 import random
 import sys
@@ -45,6 +44,21 @@ def read_images(image_dir, randomize=True, downsample=1, crop=0):
 
     return images
 
+def resize_image(image, dims):
+    """
+    Resizes image to on supplied dimensions, preserving aspect ratio.
+    """
+    row_factor, col_factor = 1, 1
+    if image.shape[0] > dims[0]:
+        row_factor = float(dims[0]) / image.shape[0]
+    if image.shape[1] > dims[1]:
+        col_factor = float(dims[1]) / image.shape[1]
+    factor = max(row_factor, col_factor)
+    if factor < 1:
+        image = cv2.resize(image, fx=factor, fy=factor, dsize=None, interpolation=cv2.INTER_AREA)
+    resized = image[(image.shape[0] - dims[0])/2:(image.shape[0] - dims[0])/2 + dims[0],
+                    (image.shape[1] - dims[1])/2:(image.shape[1] - dims[1])/2 + dims[1]]
+    return resized
 
 def average_faces(faces, out_dir, k=None, limit=None):
     """
@@ -65,19 +79,24 @@ def average_faces(faces, out_dir, k=None, limit=None):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    dims = np.array([face.shape[:2] for face in faces])
+    min_dims = np.min(dims, axis=0)
+    resized = [resize_image(img, min_dims) for img in faces]
+    print('Inputs standardized.')
+
     if not k:
-        k = len(faces)
+        k = len(resized)
         if k > 2:
-            k = len(faces) - 1
-    avg_sets = list(combinations(faces, k))
+            k = len(resized) - 1
     if not limit:
-        limit = len(avg_sets)
+        limit = len(faces)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     avgs = []
-    for num, combination in enumerate(avg_sets[:limit]):
+    for num in range(limit):
         print('Generating average ' + str(num) + '...')
+        combination = random.sample(resized, k)
         img = MorphFace(images=combination).get_avg()
         avgs.append(img)
         if out_dir:
@@ -235,10 +254,10 @@ def main(action, set_dir, source='inputs'):
     """
     image_dir = os.path.join(os.path.split(os.getcwd())[0], 'images', 'input', set_dir)
     out_dir = os.path.join(os.path.split(os.getcwd())[0], 'images', 'output', set_dir)
-    images_in = read_images(image_dir, downsample=1)
+    images_in = read_images(image_dir, downsample=2)
 
     if action == 'avg':
-        average_faces(images_in, os.path.join(out_dir, 'averages'))
+        average_faces(images_in, os.path.join(out_dir, 'averages'), k=len(images_in)/4, limit=40)
     elif action == 'morph_video':
         if source == 'transfers':
             feature_source = random.choice(images_in)

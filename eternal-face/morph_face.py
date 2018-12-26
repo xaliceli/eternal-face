@@ -40,7 +40,8 @@ class MorphFace(Face):
         """
         for num, face in enumerate(self.images):
             if detect:
-                self.all_features[:, num, :] = face.get_features()
+                if np.sum(face.get_features()):
+                    self.all_features[:, num, :] = face.get_features()
             else:
                 divided = np.zeros((self.all_features.shape[0], 2))
                 w_step = face.dims[1] / 7
@@ -59,6 +60,9 @@ class MorphFace(Face):
                 divided[73] = [face.dims[1] - 1, face.dims[0] - 1]
                 face.set_features(divided)
                 self.all_features[:, num, :] = divided
+        self.all_features = self.all_features[:, ~np.all(self.all_features == 0, axis=(0, 2)), :]
+        # TODO: Return to this -- why negative feature values? off frame?
+        self.all_features = self.all_features[:, ~np.any(self.all_features < 0, axis=(0, 2)), :]
 
     def features_out(self, weights=None):
         """
@@ -114,19 +118,21 @@ class MorphFace(Face):
             self.features_in()
         if np.sum(self.features) is None:
             self.features_out()
-        alpha = 1.0/len(self.images)
+        alpha = 1.0/self.all_features.shape[1]
         for img_num, img in enumerate(self.images):
-            source_pts = img.get_delaunay_points()
-            target_pts = self.get_delaunay_mapping(img)
-            image_warped = np.zeros(self.dims)
-            for num, triangle in enumerate(source_pts):
-                tri_warped, _ = triangle_warp(img.get_image(), triangle, target_pts[num])
-                image_warped = np.where(tri_warped > 0, tri_warped, image_warped)
-            if img_num > 0:
-                empty = ~image_warped.any(axis=2)
-                empty_mat = np.dstack((empty, empty, empty))
-                image_warped = np.where(empty_mat, self.image / (img_num * alpha), image_warped)
-            self.image += alpha * image_warped
+            if np.sum(img.get_features()) and np.all(img.get_features() >= 0) and \
+               np.all(img.get_features() < img.get_image().shape[0]):
+                source_pts = img.get_delaunay_points()
+                target_pts = self.get_delaunay_mapping(img)
+                image_warped = np.zeros(self.dims)
+                for num, triangle in enumerate(source_pts):
+                    tri_warped, _ = triangle_warp(img.get_image(), triangle, target_pts[num])
+                    image_warped = np.where(tri_warped > 0, tri_warped, image_warped)
+                if img_num > 0:
+                    empty = ~image_warped.any(axis=2)
+                    empty_mat = np.dstack((empty, empty, empty))
+                    image_warped = np.where(empty_mat, self.image / (img_num * alpha), image_warped)
+                self.image += alpha * image_warped
 
     def generate_morph(self, frames=10):
         """

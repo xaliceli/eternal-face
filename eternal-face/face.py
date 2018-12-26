@@ -46,22 +46,23 @@ class Face():
         predictor = dlib.shape_predictor(predictor_path)
 
         # Ask the detector to find the bounding boxes of face after upsampling once.
-        det = detector(self.image, 1)[0]
-        points = predictor(self.image, det)
+        detected = detector(self.image, 1)
+        if detected:
+            points = predictor(self.image, detected[0])
 
-        self.features = np.zeros((68, 2))
-        for num, point in enumerate(points.parts()):
-            self.features[num, :] = [int(point.x), int(point.y)]
+            self.features = np.zeros((68, 2))
+            for num, point in enumerate(points.parts()):
+                self.features[num, :] = [int(point.x), int(point.y)]
 
-        # Adds points at edges of image.
-        if auto_border:
-            border_pts = np.array([[0, 0],
-                                   [0, self.dims[0]/2],
-                                   [0, self.dims[0] - 1],
-                                   [self.dims[1] - 1, 0],
-                                   [self.dims[1] - 1, self.dims[0]/2],
-                                   [self.dims[1] - 1, self.dims[0] - 1]])
-            self.features = np.insert(self.features, border_pts.shape[0], border_pts, axis=0)
+            # Adds points at edges of image.
+            if auto_border:
+                border_pts = np.array([[0, 0],
+                                       [0, self.dims[0]/2],
+                                       [0, self.dims[0] - 1],
+                                       [self.dims[1] - 1, 0],
+                                       [self.dims[1] - 1, self.dims[0]/2],
+                                       [self.dims[1] - 1, self.dims[0] - 1]])
+                self.features = np.insert(self.features, border_pts.shape[0], border_pts, axis=0)
 
     def calc_delaunay(self, color=(255, 0, 0)):
         """
