@@ -3,7 +3,7 @@
 *.ipynb
 data/predictor_68.dat
 *.jpg
-*Icon
+*Icon?
 *.avi
 *.DS_Store
 *.yaml
