@@ -4,6 +4,7 @@ Performs averaging, morphing, and texturizing operations on input faces.
 """
 
 import os
+import random
 
 import cv2
 import numpy as np
@@ -63,8 +64,9 @@ class MorphFace(Face):
         self.all_features = self.all_features[:, ~np.all(self.all_features == 0, axis=(0, 2)), :]
         # TODO: Return to this -- why negative feature values? off frame?
         self.all_features = self.all_features[:, ~np.any(self.all_features < 0, axis=(0, 2)), :]
+        self.all_features = self.all_features[:, ~np.any(self.all_features >= self.dims[0], axis=(0, 2)), :]
 
-    def features_out(self, weights=None):
+    def features_out(self, distort=0, weights=None):
         """
         Takes in array of shape n x m x 2 where:
         n rows = number of feature points
@@ -78,6 +80,12 @@ class MorphFace(Face):
                 Otherwise, applies weight values to each image accordingly.
         """
         self.features = np.int32(np.round(np.average(self.all_features, axis=1, weights=weights)))
+        if distort > 0:
+            weights1 = [random.uniform(1-distort, 1+distort) for _ in range(68)]
+            weights2 = [random.uniform(1-distort, 1+distort) for _ in range(68)]
+            d_matrix = np.dstack((weights1, weights2))[0]
+            d_matrix = np.insert(d_matrix, 0, np.ones((6, 2)), axis=0)
+            self.features = self.features * d_matrix
 
     def get_delaunay_mapping(self, image):
         """
@@ -105,23 +113,27 @@ class MorphFace(Face):
             for point in triangle:
                 match = np.where((source_features[:, 0] == point[0]) & \
                                  (source_features[:, 1] == point[1]))[0][0]
-                target_triangle.append((self.features[match, 0],
-                                        self.features[match, 1]))
+                x, y = self.features[match, 0], self.features[match, 1]
+                if x >= self.dims[1]:
+                    x = self.dims[1] - 1
+                if y >= self.dims[0]:
+                    y = self.dims[0] - 1
+                target_triangle.append((x, y))
             delaunay_mapping.append(target_triangle)
         return delaunay_mapping
 
-    def generate_avg(self):
+    def generate_avg(self, distort=0):
         """
         Generates image as average of inputs.
         """
         if np.sum(self.all_features) == 0:
             self.features_in()
-        if np.sum(self.features) is None:
-            self.features_out()
+        self.features_out(distort)
+        self.image = np.zeros(self.dims)
         alpha = 1.0/self.all_features.shape[1]
         for img_num, img in enumerate(self.images):
-            if np.sum(img.get_features()) and np.all(img.get_features() >= 0) and \
-               np.all(img.get_features() < img.get_image().shape[0]):
+            if np.sum(img.get_features()) > 0 and np.all(img.get_features() >= 0) and \
+               np.all(img.get_features() < self.dims[0]):
                 source_pts = img.get_delaunay_points()
                 target_pts = self.get_delaunay_mapping(img)
                 image_warped = np.zeros(self.dims)
@@ -133,6 +145,7 @@ class MorphFace(Face):
                     empty_mat = np.dstack((empty, empty, empty))
                     image_warped = np.where(empty_mat, self.image / (img_num * alpha), image_warped)
                 self.image += alpha * image_warped
+        return self.image
 
     def generate_morph(self, frames=10):
         """
@@ -185,14 +198,6 @@ class MorphFace(Face):
                                                     'warp' + str(img_num) + str(num) + '.png')
                         cv2.imwrite(bounded_path, bounded)
                     self.textures.append(bounded)
-
-    def get_avg(self):
-        """
-        Returns averaged face.
-        """
-        if np.sum(self.image) == 0:
-            self.generate_avg()
-        return self.image
 
     def get_morph(self, num_frames):
         """

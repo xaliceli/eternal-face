@@ -47,10 +47,10 @@ class Face():
 
         # Ask the detector to find the bounding boxes of face after upsampling once.
         detected = detector(self.image, 1)
+        self.features = np.zeros((68, 2))
         if detected:
             points = predictor(self.image, detected[0])
 
-            self.features = np.zeros((68, 2))
             for num, point in enumerate(points.parts()):
                 self.features[num, :] = [int(point.x), int(point.y)]
 
@@ -62,7 +62,9 @@ class Face():
                                        [self.dims[1] - 1, 0],
                                        [self.dims[1] - 1, self.dims[0]/2],
                                        [self.dims[1] - 1, self.dims[0] - 1]])
-                self.features = np.insert(self.features, border_pts.shape[0], border_pts, axis=0)
+                self.features = np.insert(self.features, 0, border_pts, axis=0)
+        elif auto_border:
+            self.features = np.insert(self.features, 0, np.zeros((6, 2)), axis=0)
 
     def calc_delaunay(self, color=(255, 0, 0)):
         """

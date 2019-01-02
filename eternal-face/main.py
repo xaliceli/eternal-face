@@ -60,7 +60,7 @@ def resize_image(image, dims):
                     (image.shape[1] - dims[1])/2:(image.shape[1] - dims[1])/2 + dims[1]]
     return resized
 
-def average_faces(faces, out_dir, k=None, limit=None):
+def average_faces(faces, out_dir, k, limit, distort=0):
     """
     Computes k averages from n faces.
 
@@ -80,29 +80,33 @@ def average_faces(faces, out_dir, k=None, limit=None):
         os.makedirs(out_dir)
 
     dims = np.array([face.shape[:2] for face in faces])
-    min_dims = np.min(dims, axis=0)
-    resized = [resize_image(img, min_dims) for img in faces]
+    min_dim = np.min(dims)
+    resized = [resize_image(img, (min_dim, min_dim)) for img in faces]
     print('Inputs standardized.')
 
-    if not k:
-        k = len(resized)
-        if k > 2:
-            k = len(resized) - 1
-    if not limit:
-        limit = len(faces)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     avgs = []
+    distortions = []
     for num in range(limit):
         print('Generating average ' + str(num) + '...')
         combination = random.sample(resized, k)
-        img = MorphFace(images=combination).get_avg()
+        morphing = MorphFace(images=combination)
+        img = morphing.generate_avg()
         avgs.append(img)
         if out_dir:
             out_path = os.path.join(out_dir, 'avg{0:04d}.png'.format(num))
             cv2.imwrite(out_path, img)
-    return avgs
+        if distort > 0:
+            print('Generating distortion ' + str(num) + '...')
+            distortion = morphing.generate_avg(distort)
+            distortions.append(distortion)
+            if out_dir:
+                out_path = os.path.join(out_dir, 'distortion{0:04d}.png'.format(num))
+                cv2.imwrite(out_path, distortion)
+
+    return avgs, distortions
 
 
 def morph_gif(images, out_dir, features=None, f_rate=20, frames=40):
@@ -254,10 +258,10 @@ def main(action, set_dir, source='inputs'):
     """
     image_dir = os.path.join(os.path.split(os.getcwd())[0], 'images', 'input', set_dir)
     out_dir = os.path.join(os.path.split(os.getcwd())[0], 'images', 'output', set_dir)
-    images_in = read_images(image_dir, downsample=2)
+    images_in = read_images(image_dir, downsample=1)
 
     if action == 'avg':
-        average_faces(images_in, os.path.join(out_dir, 'averages'), k=len(images_in)/4, limit=40)
+        average_faces(images_in, os.path.join(out_dir, 'averages'), k=20, limit=100, distort=0.05)
     elif action == 'morph_video':
         if source == 'transfers':
             feature_source = random.choice(images_in)
