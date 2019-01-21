@@ -7,5 +7,5 @@ data/predictor_68.dat
 *.avi
 *.DS_Store
 *.yaml
-!examples/
+!examples/*
 .idea/*
