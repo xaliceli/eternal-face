@@ -202,6 +202,8 @@ def generate_textures(seeds, dims, out_dir, window=None, rotate=3):
                     w_size = int(min(seed.shape[:2]) * .5)
                 else:
                     w_size = int(min(seed.shape[:2]) * .75)
+            else:
+                w_size = window
             if w_size % 2 == 0:
                 w_size -= 1
             texture = Texture(dims, w_size).get_texture(seed, None, rotate)
@@ -296,7 +298,7 @@ def main(action, set_dir, source='inputs'):
         seeds = read_images(os.path.join(out_dir, 'warps'), randomize=False)
         if source == 'random':
             seeds = random.sample(seeds, len(seeds)/10)
-        generate_textures(seeds, (1080, 1920, 3), os.path.join(out_dir, 'textures'))
+        generate_textures(seeds, (1080, 1920, 3), os.path.join(out_dir, 'textures'), 100)
     elif action == 'transfer_from_warp':
         if source == 'averages':
             images = read_images(os.path.join(out_dir, 'averages'))

@@ -37,7 +37,7 @@ class Texture():
         pad_col = (dims[1] / self.adj_wind) * self.adj_wind + self.w - dims[1]
         self.filled = np.zeros((dims[0] + pad_row, dims[1] + pad_col, dims[2]))
 
-    def generate_candidates(self, source, rotate):
+    def generate_candidates(self, source, rotate, correspondence):
         """
         Generates all possible patches in source image.
 
@@ -72,7 +72,8 @@ class Texture():
                 self.candidates[num_unique * rotation:num_unique * (rotation + 1)] = rotated_patches
 
         # Calculate grayscale version of each patch.
-        self.candidates_gray = np.average(self.candidates, axis=3, weights=[0.114, 0.587, 0.299])
+        if correspondence:
+            self.candidates_gray = np.average(self.candidates, axis=3, weights=[0.114, 0.587, 0.299])
 
     def calc_errors(self, up, left):
         """
@@ -188,7 +189,8 @@ class Texture():
         """
         # Find all available candidate patches and initialize first patch randomly.
         if self.candidates is None:
-            self.generate_candidates(source, rotate)
+            self.generate_candidates(source, rotate, correspondence is not None)
+            print('Candidates generated.')
         self.filled[:self.w, :self.w] = self.candidates[random.randint(0, self.candidates.shape[0])]
 
         # Pads correspondence image if available.
